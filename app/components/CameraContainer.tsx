@@ -2,8 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { Hands, Results } from "@mediapipe/hands";
 import { classifyHand } from "../utils/classifier";
+
+// Extend Window to include MediaPipe classes
+declare global {
+  interface Window {
+    Hands: any;
+  }
+}
 
 interface Props {
   onSignDetected: (sign: string) => void;
@@ -12,26 +18,29 @@ interface Props {
 export default function CameraContainer({ onSignDetected }: Props) {
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [hands, setHands] = useState<Hands | null>(null);
+  const [hands, setHands] = useState<any | null>(null);
 
   useEffect(() => {
-    const handsInstance = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-    });
+    // MediaPipe Hands loaded via CDN in layout.tsx
+    if (typeof window !== "undefined" && window.Hands) {
+      const handsInstance = new window.Hands({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      });
 
-    handsInstance.setOptions({
-      maxNumHands: 2,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
+      handsInstance.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
 
-    handsInstance.onResults(onResults);
-    setHands(handsInstance);
+      handsInstance.onResults(onResults);
+      setHands(handsInstance);
 
-    return () => {
-      handsInstance.close();
-    };
+      return () => {
+        handsInstance.close();
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -52,7 +61,7 @@ export default function CameraContainer({ onSignDetected }: Props) {
     return () => cancelAnimationFrame(animationFrame);
   }, [hands]);
 
-  const onResults = (results: Results) => {
+  const onResults = (results: any) => {
     const canvasElement = canvasRef.current;
     if (!canvasElement) return;
     const canvasCtx = canvasElement.getContext("2d");
